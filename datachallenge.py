@@ -5,6 +5,7 @@ import plotly.express as px
 # ---------------------------- CONFIGURATION ----------------------------
 st.set_page_config(
     page_title="Louis Vuitton - Étude Métiers Industriels",
+    page_icon="👜",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -92,6 +93,140 @@ if filiere:
     df_filtered = df_filtered[df_filtered['Filière'].isin(filiere)]
 if niveau:
     df_filtered = df_filtered[df_filtered["Niveau d'études"].isin(niveau)]
+
+# ---------------------------- ANALYSE PAR QUESTION ----------------------------
+st.markdown("---")
+st.header("📋 Analyse Détailée par Question")
+
+questions = {
+    # -------------------------------
+    # A. Profil du Répondant
+    # -------------------------------
+    "Q1 - Filière d'études": {
+        "colonne": "Filière",
+        "description": "Quelle est ta filière d’études ?",
+        "options": ["Ingénierie", "Logistique - Supply Chain", "Commerce - Management", "Autre"]
+    },
+    "Q2 - Niveau d'études": {
+        "colonne": "Niveau d'études",
+        "description": "Quel est ton niveau d’études actuel ?",
+        "options": ["Bac +3", "Bac +4", "Bac +5 et plus"]
+    },
+    "Q3 - Recherche emploi": {
+        "colonne": "Recherche d'emploi",
+        "description": "As-tu déjà recherché un stage ou un emploi dans l’industrie ou la Supply Chain ?",
+        "options": ["Oui, et j'ai postulé", "Oui, mais non postulé", "Non intéressé"]
+    },
+
+    # -------------------------------
+    # B. Perception des Métiers
+    # -------------------------------
+    "Q4 - Connaissance métiers": {
+        "colonne": "Niveau de connaissance",
+        "description": "Quel est ton niveau de connaissance sur ces métiers ?",
+        "options": ["Très bon", "Moyen", "Faible", "Aucun"]
+    },
+    "Q5 - Adjectifs associés": {
+        "colonne": "Perception des métiers",
+        "description": "Quels adjectifs associes-tu spontanément à ces métiers ? (3 choix max)",
+        "options": ["Innovant", "Routinier", "Technique", "Physiquement exigeant", 
+                   "Peu valorisé", "Dynamique", "Mal payé", "Opportunités d'évolution", "Autre"]
+    },
+    "Q6 - Opportunités carrière": {
+        "colonne": "Opportunités de carrière",
+        "description": "Penses-tu que ces métiers offrent des opportunités intéressantes ?",
+        "options": ["Oui", "Peut-être", "Non"]
+    },
+    "Q7 - Freins candidature": {
+        "colonne": "Raisons de ne pas postuler",
+        "description": "Raisons de ne pas postuler ? (3 choix max)",
+        "options": ["Manque d'info", "Manque d'intérêt", "Salaire", "Image peu prestigieuse",
+                   "Travail répétitif", "Visibilité limitée", "Secteur moins innovant", "Autre"]
+    },
+
+    # -------------------------------
+    # C. Métiers dans le Luxe
+    # -------------------------------
+    "Q8 - Recrutement luxe": {
+        "colonne": "Recrutement dans le luxe",
+        "description": "Penses-tu que le luxe recrute dans ces domaines ?",
+        "options": ["Oui avec opportunités", "Oui sans détails", "Non"]
+    },
+    "Q9 - Perception luxe": {
+        "colonne": "Intérêt pour le luxe",
+        "description": "Travailler dans le luxe est...",
+        "options": ["Plus valorisant", "Aussi intéressant", "Moins intéressant"]
+    },
+    "Q10 - A priori négatifs": {
+        "colonne": "A priori négatifs",
+        "description": "As-tu des a priori négatifs sur ces métiers dans le luxe ?",
+        "options": ["Moins bien considérés", "Moins innovants", "Aussi intéressants", "Lien artisanat"]
+    },
+
+    # -------------------------------
+    # D. Attentes et Canaux
+    # -------------------------------
+    "Q11 - Motivations": {
+        "colonne": "Motivations",
+        "description": "Qu'est-ce qui te motiverait ? (3 choix max)",
+        "options": ["Salaire", "Évolution", "Rôle industrie", "Communication moderne", 
+                   "Collaborations écoles", "Rien"]
+    },
+    "Q12 - Canaux information": {
+        "colonne": "Canaux d'information",
+        "description": "Quels canaux t'influencent ? (3 choix max)",
+        "options": ["Réseaux sociaux", "Salons", "Témoignages", "Visites entreprises", 
+                   "Contenus en ligne", "Autre"]
+    },
+    "Q13 - Initiatives motivantes": {
+        "colonne": "Initiatives motivantes",
+        "description": "Initiatives pour découvrir les métiers ? (3 choix max)",
+        "options": ["Témoignages", "Expérience immersive", "Hackathons", "Ateliers/conférences", 
+                   "Campagnes réseaux", "Autre"]
+    }
+}
+
+selected_question = st.selectbox(
+    "Sélectionnez une question :",
+    options=list(questions.keys()),
+    index=0
+)
+
+q_data = questions[selected_question]
+
+try:
+    with st.expander(f"**{selected_question}** : {q_data['description']}", expanded=True):
+        if df_filtered[q_data['colonne']].str.contains('/').any():
+            reponses = df_filtered[q_data['colonne']].str.split('/').explode().str.strip()
+        else:
+            reponses = df_filtered[q_data['colonne']].dropna()
+        
+        counts = reponses.value_counts(normalize=True).mul(100).round(1)
+        
+        df_plot = pd.DataFrame({
+            'Réponse': counts.index,
+            'Pourcentage': counts.values
+        }).sort_values('Pourcentage', ascending=False)
+
+        fig = px.bar(
+            df_plot,
+            x='Réponse',
+            y='Pourcentage',
+            title=f"Répartition des réponses",
+            labels={'Pourcentage': 'Pourcentage (%)'},
+            color='Réponse',
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("**Détail des pourcentages :**")
+        st.dataframe(df_plot.set_index('Réponse'), use_container_width=True)
+
+except KeyError:
+    st.error(f"Colonne '{q_data['colonne']}' non trouvée")
+except Exception as e:
+    st.error(f"Erreur lors de l'analyse : {str(e)}")
 
 # ---------------------------- ANALYSE QUANTITATIVE ----------------------------
 st.markdown("---")
@@ -234,13 +369,14 @@ st.write(synthese)
 
 # ---------------------------- SYNTHÈSE ----------------------------
 st.markdown("---")
-st.success("""
+st.header("💡 Synthèse Stratégique")
+st.markdown("""
 **🔍 Principaux Enseignements** :
-- Forte méconnaissance des métiers industriels chez 68% des répondants
+- Forte méconnaissance des métiers industriels (68% des répondants)
 - Attentes fortes sur la formation continue et l'impact RSE
 - Freins culturels persistants (élitisme perçu, manque de diversité)
 
-**🚀 Recommandations Stratégiques** :
+**🚀 Recommandations Clés** :
 1. Programme « Découverte Métiers » avec visites virtuelles
 2. Plateforme de mentorat collaboratif
 3. Campagne de communication ciblant les lycées techniques
